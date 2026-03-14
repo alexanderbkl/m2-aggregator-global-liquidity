@@ -250,7 +250,8 @@ def plot_regime_accuracy(
 
     y_pred = (p_up >= 0.5).astype(int)
     da_per_regime: dict = {}
-    for label in buckets.cat.categories:
+    categories = buckets.cat.categories if hasattr(buckets, "cat") else buckets.categories
+    for label in categories:
         mask = buckets == label
         if mask.sum() < 5:
             continue

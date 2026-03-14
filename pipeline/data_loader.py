@@ -31,7 +31,7 @@ def load_btc_data(config: dict) -> pd.DataFrame:
     start: str = config.get("btc_start_date", "2015-01-01")
 
     logger.info("Downloading BTC data: ticker=%s start=%s", ticker, start)
-    raw = yf.download(ticker, start=start, auto_adjust=True, progress=False)
+    raw = yf.download(ticker, start=start, auto_adjust=True, progress=False, timeout=100)
 
     if raw.empty:
         raise RuntimeError(

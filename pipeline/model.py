@@ -19,26 +19,31 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-try:
-    import lightgbm as lgb
-except OSError as exc:
-    # LightGBM wheels on macOS require the OpenMP runtime from Homebrew.
-    if sys.platform == "darwin" and "libomp" in str(exc):
-        raise RuntimeError(
-            "LightGBM failed to load because libomp.dylib is missing. "
-            "Install it with 'brew install libomp', then reinstall LightGBM "
-            "inside the active virtualenv (pip install --force-reinstall lightgbm)."
-        ) from exc
-    raise
 
 from pipeline.sdae import SDAE, encode_features, train_sdae
 
 logger = logging.getLogger(__name__)
+
+
+def _import_lightgbm() -> Any:
+    """Import LightGBM lazily to reduce native runtime conflicts during SDAE training."""
+    try:
+        import lightgbm as lgb
+    except OSError as exc:
+        # LightGBM wheels on macOS require the OpenMP runtime from Homebrew.
+        if sys.platform == "darwin" and "libomp" in str(exc):
+            raise RuntimeError(
+                "LightGBM failed to load because libomp.dylib is missing. "
+                "Install it with 'brew install libomp', then reinstall LightGBM "
+                "inside the active virtualenv (pip install --force-reinstall lightgbm)."
+            ) from exc
+        raise
+    return lgb
 
 
 # ── Train ──────────────────────────────────────────────────────────────────────
@@ -50,7 +55,7 @@ def train_model(
     y_val: pd.Series,
     feature_cols: List[str],
     config: dict,
-) -> Tuple[SDAE, StandardScaler, lgb.LGBMClassifier, List[str]]:
+) -> Tuple[SDAE, StandardScaler, Any, List[str]]:
     """
     Full training pipeline: scale → SDAE → LightGBM.
 
@@ -91,6 +96,7 @@ def train_model(
         lgbm_features = enc_names
 
     # 5. Train LightGBM
+    lgb = _import_lightgbm()
     lgbm_params = dict(config.get("lgbm_params", {}))
     early_stop = config.get("lgbm_early_stopping_rounds", 50)
 
@@ -120,7 +126,7 @@ def predict(
     feature_cols: List[str],
     sdae_model: SDAE,
     scaler: StandardScaler,
-    lgbm_model: lgb.LGBMClassifier,
+    lgbm_model: Any,
     config: dict,
 ) -> np.ndarray:
     """

@@ -40,7 +40,7 @@ def _make_monthly_series(start: str = "2020-01-31", periods: int = 24, value: fl
 
 def _base_config() -> dict:
     return {
-        "fred_api_key": "fake_key",
+        "fred_api_key": "aaf3121388bab2aba7ad45a91c0790a4",
         "m2_countries": ["US", "EA"],
         "m2_source": "bis_fred",
         "m2_lag_days": [1, 7, 14],
@@ -283,7 +283,7 @@ class TestLoadOrBuildM2Series:
 
         config = {
             "m2_source": "bis_fred",
-            "fred_api_key": "fake_key",
+            "fred_api_key": "aaf3121388bab2aba7ad45a91c0790a4",
             "m2_countries": ["US"],
             "m2_lag_days": [1],
             "m2_growth_windows": [7],
@@ -325,7 +325,7 @@ class TestBuildGlobalM2Monthly:
 
     def test_sums_countries(self):
         config = {
-            "fred_api_key": "fake_key",
+            "fred_api_key": "aaf3121388bab2aba7ad45a91c0790a4",
             "m2_countries": ["US", "EA"],
         }
         with patch("pipeline.m2_liquidity._country_m2_usd", return_value=self._mock_country(1000.0)):
@@ -335,7 +335,7 @@ class TestBuildGlobalM2Monthly:
 
     def test_raises_when_all_countries_fail(self):
         config = {
-            "fred_api_key": "fake_key",
+            "fred_api_key": "aaf3121388bab2aba7ad45a91c0790a4",
             "m2_countries": ["US"],
         }
         with patch("pipeline.m2_liquidity._country_m2_usd", return_value=pd.Series(dtype=float)):
@@ -345,7 +345,7 @@ class TestBuildGlobalM2Monthly:
     def test_partial_country_failure_is_logged(self, caplog):
         import logging
         config = {
-            "fred_api_key": "fake_key",
+            "fred_api_key": "aaf3121388bab2aba7ad45a91c0790a4",
             "m2_countries": ["US", "EA"],
         }
         call_count = {"n": 0}

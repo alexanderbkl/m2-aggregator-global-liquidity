@@ -60,8 +60,8 @@ CONFIG: dict = {
     "sdae_batch_size": 256,
     "sdae_patience": 10,
     "sdae_log_every_epochs": 1,
-    "sdae_log_every_batches": 1,   # set >0 for very verbose batch-level progress logs
-    "sdae_torch_num_threads": 2,  # e.g. 1-4 can help on some macOS CPU/OpenMP setups
+    "sdae_log_every_batches": 0,   # set >0 for very verbose batch-level progress logs
+    "sdae_torch_num_threads": None,  # e.g. 1-4 can help on some macOS CPU/OpenMP setups
 
     # ── LightGBM ──────────────────────────────────────────────────────────
     "lgbm_params": {

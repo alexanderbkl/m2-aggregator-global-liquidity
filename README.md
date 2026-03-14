@@ -240,6 +240,18 @@ pytest tests/test_m2_liquidity.py::TestLoadOrBuildM2Series -v
 
 All 27 tests should pass in under 2 seconds.
 
+### Optional live integration tests (Yahoo + FRED)
+
+These tests hit real external services and are skipped by default.
+
+```bash
+export RUN_LIVE_DATA_TESTS=1
+export FRED_API_KEY="your_key_here"   # required for FRED-backed tests
+pytest tests/test_live_data_integration.py -v
+```
+
+If `RUN_LIVE_DATA_TESTS` is not set to `1`, the file is collected but skipped.
+
 ---
 
 ## Troubleshooting
