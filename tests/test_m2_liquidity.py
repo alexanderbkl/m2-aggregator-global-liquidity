@@ -223,6 +223,36 @@ class TestCountryM2Usd:
         assert not s.empty
         assert s.iloc[0] == pytest.approx(1100.0)
 
+    def test_date_alignment_first_of_month_m2_with_daily_fx(self):
+        """Regression: FRED monthly M2 uses first-of-month dates; daily FX
+        resampled to month-end must still align correctly (the core bug)."""
+        # M2 series with first-of-month dates (as FRED actually returns)
+        m2_first_of_month = pd.Series(
+            [1_000_000.0] * 12,
+            index=pd.date_range("2020-01-01", periods=12, freq="MS"),
+        )
+        # FX series with daily dates (as FRED actually returns for exchange rates)
+        daily_idx = pd.date_range("2020-01-01", periods=366, freq="D")
+        fx_daily = pd.Series(1.1, index=daily_idx)
+
+        call_map = {
+            "MABMM301EZM189S": m2_first_of_month,
+            "EXUSEU": fx_daily,
+        }
+
+        def fake_fetch(series_id, api_key):
+            return call_map.get(series_id, pd.Series(dtype=float))
+
+        with patch("pipeline.m2_liquidity._fetch_fred", side_effect=fake_fetch):
+            s = _country_m2_usd("EA", "fake_key")
+
+        # Must NOT be empty – this was the bug (inner join on mismatched dates → 0 rows)
+        assert not s.empty, (
+            "Date-alignment bug: M2 first-of-month dates did not align with "
+            "FX month-end dates after resampling"
+        )
+        assert s.iloc[0] == pytest.approx(1100.0)
+
 
 # ── _load_from_csv ─────────────────────────────────────────────────────────────
 
@@ -330,8 +360,11 @@ class TestBuildGlobalM2Monthly:
         }
         with patch("pipeline.m2_liquidity._country_m2_usd", return_value=self._mock_country(1000.0)):
             result = _build_global_m2_monthly(config)
-        # 2 countries × 1000 each → 2000 (approximately, may differ due to resample/ffill)
-        assert (result >= 1500).all()
+        # Result is now a DataFrame with M2_global_usd (sum) and per-country columns
+        assert isinstance(result, pd.DataFrame)
+        assert "M2_global_usd" in result.columns
+        # 2 countries × 1000 each → global sum ≥ 1500
+        assert (result["M2_global_usd"] >= 1500).all()
 
     def test_raises_when_all_countries_fail(self):
         config = {
@@ -341,6 +374,25 @@ class TestBuildGlobalM2Monthly:
         with patch("pipeline.m2_liquidity._country_m2_usd", return_value=pd.Series(dtype=float)):
             with pytest.raises(RuntimeError, match="Could not obtain M2 data"):
                 _build_global_m2_monthly(config)
+
+    def test_per_country_columns_present(self):
+        """DataFrame must include individual country columns alongside the global sum."""
+        config = {
+            "fred_api_key": "fake_key",
+            "m2_countries": ["US", "EA"],
+        }
+
+        def side_effect(country, api_key):
+            s = self._mock_country(1000.0)
+            s.name = f"m2_{country}_usd"
+            return s
+
+        with patch("pipeline.m2_liquidity._country_m2_usd", side_effect=side_effect):
+            result = _build_global_m2_monthly(config)
+
+        assert "M2_global_usd" in result.columns
+        assert "m2_US_usd" in result.columns
+        assert "m2_EA_usd" in result.columns
 
     def test_partial_country_failure_is_logged(self, caplog):
         import logging
