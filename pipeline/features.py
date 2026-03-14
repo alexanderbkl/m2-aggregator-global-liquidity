@@ -10,6 +10,11 @@ BTC technical features
 • Rolling mean / std of close over configurable windows
 • Normalised price range (High-Low)/Close
 • Volume change (pct)
+• RSI at 14 and 28-day periods
+• MACD line, signal, and histogram (12/26/9 EMA)
+• Bollinger Band width and %B position (20-day)
+• Average True Range normalised by close (14 and 28-day)
+• Rate of change at 3, 14, and 30-day periods
 
 Global M2 features (when use_m2_exog=True)
 ──────────────────────────────────────────
@@ -31,6 +36,46 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# Small constant to prevent division-by-zero throughout this module
+_EPS = 1e-9
+
+
+# ── Technical indicator helpers ────────────────────────────────────────────────
+
+def _rsi(series: pd.Series, period: int = 14) -> pd.Series:
+    """Wilder's Relative Strength Index."""
+    delta = series.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(com=period - 1, min_periods=period).mean()
+    avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
+    rs = avg_gain / (avg_loss + _EPS)
+    return 100.0 - (100.0 / (1.0 + rs))
+
+
+def _macd(
+    series: pd.Series,
+    fast: int = 12,
+    slow: int = 26,
+    signal: int = 9,
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """MACD line, signal line, and histogram."""
+    ema_fast = series.ewm(span=fast, min_periods=fast).mean()
+    ema_slow = series.ewm(span=slow, min_periods=slow).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, min_periods=signal).mean()
+    return macd_line, signal_line, macd_line - signal_line
+
+
+def _atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+    """Average True Range."""
+    prev_close = close.shift(1)
+    tr = pd.concat(
+        [high - low, (high - prev_close).abs(), (low - prev_close).abs()],
+        axis=1,
+    ).max(axis=1)
+    return tr.ewm(span=period, min_periods=period).mean()
+
 
 def _add_btc_features(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     """Add technical indicator columns derived from BTC OHLCV data."""
@@ -48,17 +93,47 @@ def _add_btc_features(df: pd.DataFrame, config: dict) -> pd.DataFrame:
         df[f"close_std_{w}d"] = close.rolling(w).std()
         # Price relative to its rolling mean (Z-score flavour)
         df[f"close_zscore_{w}d"] = (
-            (close - df[f"close_ma_{w}d"]) / (df[f"close_std_{w}d"] + 1e-9)
+            (close - df[f"close_ma_{w}d"]) / (df[f"close_std_{w}d"] + _EPS)
         )
 
     # Intraday range normalised by close
     if "High" in df.columns and "Low" in df.columns:
-        df["norm_range"] = (df["High"] - df["Low"]) / (close + 1e-9)
+        df["norm_range"] = (df["High"] - df["Low"]) / (close + _EPS)
 
     # Volume change
     if "Volume" in df.columns:
         df["vol_pct_chg_1d"] = df["Volume"].pct_change(1)
         df["vol_pct_chg_7d"] = df["Volume"].pct_change(7)
+
+    # ── RSI ───────────────────────────────────────────────────────────────────
+    df["rsi_14"] = _rsi(close, period=14)
+    df["rsi_28"] = _rsi(close, period=28)
+
+    # ── MACD ─────────────────────────────────────────────────────────────────
+    macd_line, macd_signal, macd_hist = _macd(close)
+    df["macd_line"] = macd_line
+    df["macd_signal"] = macd_signal
+    df["macd_hist"] = macd_hist
+
+    # ── Bollinger Bands (20-day) ──────────────────────────────────────────────
+    bb_ma = close.rolling(20).mean()
+    bb_std = close.rolling(20).std()
+    bb_upper = bb_ma + 2 * bb_std
+    bb_lower = bb_ma - 2 * bb_std
+    bb_width = (bb_upper - bb_lower) / (bb_ma + _EPS)
+    bb_pct = (close - bb_lower) / (bb_upper - bb_lower + _EPS)
+    df["bb_width_20"] = bb_width
+    df["bb_pct_20"] = bb_pct
+
+    # ── Average True Range ────────────────────────────────────────────────────
+    if "High" in df.columns and "Low" in df.columns:
+        df["atr_14"] = _atr(df["High"], df["Low"], close, period=14) / (close + _EPS)
+        df["atr_28"] = _atr(df["High"], df["Low"], close, period=28) / (close + _EPS)
+
+    # ── Rate of Change (price momentum) ──────────────────────────────────────
+    df["roc_3d"] = close.pct_change(3)
+    df["roc_14d"] = close.pct_change(14)
+    df["roc_30d"] = close.pct_change(30)
 
     return df
 

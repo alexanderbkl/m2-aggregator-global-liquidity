@@ -38,7 +38,7 @@ CONFIG: dict = {
     "m2_lag_days": [1, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98],
 
     # Growth windows (in days) computed on the daily M2 series
-    "m2_growth_windows": [7, 30, 90],
+    "m2_growth_windows": [7, 14, 30, 60, 90, 180],
 
     # ── Feature engineering ────────────────────────────────────────────────
     # Rolling windows (in days) for BTC technical features
@@ -51,36 +51,37 @@ CONFIG: dict = {
     # The remaining fraction goes to the test set
 
     # ── SDAE (Stacked Denoising Autoencoder) ──────────────────────────────
-    "sdae_hidden_dims": [256, 128, 64],   # encoder hidden layer sizes
+    "sdae_hidden_dims": [512, 256, 128],  # encoder hidden layer sizes; doubled from [256,128,64] to match the richer feature set (BTC indicators + per-country M2)
     "sdae_noise_factor": 0.1,             # Gaussian noise σ added during training
     "sdae_dropout": 0.2,
     "sdae_learning_rate": 1e-3,
     "sdae_weight_decay": 1e-5,
-    "sdae_epochs": 50,
+    "sdae_epochs": 100,
     "sdae_batch_size": 256,
-    "sdae_patience": 10,
-    "sdae_log_every_epochs": 1,
-    "sdae_log_every_batches": 1,   # set >0 for very verbose batch-level progress logs
+    "sdae_patience": 15,
+    "sdae_log_every_epochs": 10,
+    "sdae_log_every_batches": 0,   # set >0 for very verbose batch-level progress logs
     "sdae_torch_num_threads": 2,  # e.g. 1-4 can help on some macOS CPU/OpenMP setups
 
     # ── LightGBM ──────────────────────────────────────────────────────────
     "lgbm_params": {
         "objective": "binary",
         "metric": "binary_logloss",
-        "n_estimators": 500,
-        "learning_rate": 0.05,
-        "max_depth": 6,
+        "n_estimators": 1000,
+        "learning_rate": 0.02,
+        "max_depth": 7,
         "num_leaves": 63,
-        "min_child_samples": 20,
-        "subsample": 0.8,
-        "colsample_bytree": 0.8,
-        "reg_alpha": 0.1,
-        "reg_lambda": 1.0,
+        "min_child_samples": 30,
+        "subsample": 0.7,
+        "subsample_freq": 1,
+        "colsample_bytree": 0.7,
+        "reg_alpha": 0.2,
+        "reg_lambda": 2.0,
         "random_state": 42,
         "n_jobs": -1,
         "verbose": -1,
     },
-    "lgbm_early_stopping_rounds": 50,
+    "lgbm_early_stopping_rounds": 100,
 
     # ── Evaluation & output ────────────────────────────────────────────────
     "output_dir": "outputs",

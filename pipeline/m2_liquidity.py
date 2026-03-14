@@ -16,6 +16,14 @@ EA  → FRED MABMM301EZM189S (Millions EUR, monthly SA)  + FRED EXUSEU FX
 CN  → FRED MYAGM2CNM189N  (Billions CNY, monthly NSA) + FRED EXCHUS FX
 JP  → FRED MYAGM2JPM189N  (Billions JPY, monthly SA)  + FRED EXJPUS FX
 GB  → FRED MABMM301GBM189S (Millions GBP, monthly SA) + FRED EXUSUK FX
+
+Key design note on date alignment
+──────────────────────────────────
+FRED monthly M2 series use *first-of-month* dates (e.g. 2020-01-01) while
+daily FX series resampled to "ME" produce *month-end* dates (2020-01-31).
+Aligning them with ``join="inner"`` yields zero matching rows unless both
+sides are first normalized to month-end.  The fix is to resample every M2
+series to "ME" *before* the inner join.
 """
 
 from __future__ import annotations
@@ -120,8 +128,13 @@ def _fetch_fred(series_id: str, api_key: str) -> pd.Series:
 
 def _country_m2_usd(country: str, api_key: str) -> pd.Series:
     """
-    Return a monthly pd.Series of M2 (in billions USD) for one country.
+    Return a monthly pd.Series of M2 (in billions USD) for one country,
+    indexed at month-end dates.
     Returns an empty Series if data cannot be obtained.
+
+    Important: FRED monthly M2 series carry *first-of-month* dates while
+    daily FX series resampled to month-end carry *last-of-month* dates.
+    Both are normalised to month-end here so they align correctly.
     """
     meta = M2_FRED_SERIES.get(country)
     if meta is None:
@@ -135,9 +148,14 @@ def _country_m2_usd(country: str, api_key: str) -> pd.Series:
     # Convert to billions (local currency)
     m2_bn = m2 * meta["unit_to_billions"]
 
+    # Normalise M2 to month-end frequency.  FRED monthly series use first-of-
+    # month dates; resampling to "ME" shifts them to month-end so they can be
+    # aligned with FX data that was also resampled to "ME".
+    m2_monthly = m2_bn.resample("ME").last()
+
     if meta["fx_id"] is None:
-        # Already USD
-        result = m2_bn
+        # Already USD – no FX conversion needed
+        result = m2_monthly
     else:
         fx = _fetch_fred(meta["fx_id"], api_key)
         if fx.empty:
@@ -149,13 +167,13 @@ def _country_m2_usd(country: str, api_key: str) -> pd.Series:
         # Resample FX to month-end to align with monthly M2
         fx_monthly = fx.resample("ME").last().ffill()
 
-        # Align on common dates
-        m2_bn, fx_monthly = m2_bn.align(fx_monthly, join="inner")
+        # Align on common month-end dates (both sides are now "ME" indexed)
+        m2_monthly, fx_monthly = m2_monthly.align(fx_monthly, join="inner")
 
         if meta["fx_direction"] == "multiply":
-            result = m2_bn * fx_monthly
+            result = m2_monthly * fx_monthly
         else:
-            result = m2_bn / fx_monthly
+            result = m2_monthly / fx_monthly
 
     result.name = f"m2_{country}_usd"
     return result.dropna()
@@ -163,10 +181,11 @@ def _country_m2_usd(country: str, api_key: str) -> pd.Series:
 
 # ── Aggregate global M2 (monthly) ─────────────────────────────────────────────
 
-def _build_global_m2_monthly(config: dict) -> pd.Series:
+def _build_global_m2_monthly(config: dict) -> pd.DataFrame:
     """
-    Fetch each country's M2, convert to billions USD, and sum to a single
-    monthly global M2 series.
+    Fetch each country's M2, convert to billions USD, and return a DataFrame
+    containing the global sum (``M2_global_usd``) plus individual per-country
+    series (``m2_{country}_usd``).  All columns are indexed at month-end dates.
     """
     api_key: str = config.get("fred_api_key", "")
     countries: List[str] = config.get("m2_countries", list(M2_FRED_SERIES))
@@ -195,31 +214,42 @@ def _build_global_m2_monthly(config: dict) -> pd.Series:
             failed,
         )
 
+    # Align individual country series and compute the global sum
     df = pd.concat(series_list, axis=1).sort_index()
     global_m2 = df.sum(axis=1, min_count=1).dropna()
     global_m2.name = "M2_global_usd"
 
+    # Combine the global sum with the individual country series so downstream
+    # code can use per-country signals as additional features
+    result = pd.concat([global_m2, df], axis=1)
+
     # Resample to month-end frequency (forward-fill gaps ≤ 2 months)
-    global_m2 = global_m2.resample("ME").last().ffill(limit=2)
-    return global_m2
+    result = result.resample("ME").last().ffill(limit=2)
+    return result
 
 
 # ── Resample monthly → daily ───────────────────────────────────────────────────
 
 def _resample_to_daily(
-    monthly: pd.Series,
+    monthly: pd.DataFrame | pd.Series,
     start_date: str,
     end_date: str,
 ) -> pd.DataFrame:
     """
-    Forward-fill a monthly series onto a complete daily date range.
-    Liquidity conditions are treated as piecewise constant between
+    Forward-fill a monthly series (or DataFrame) onto a complete daily date
+    range.  Liquidity conditions are treated as piecewise constant between
     reporting dates (standard macro-trading convention).
+
+    Accepts either a ``pd.Series`` (legacy / CSV path) or a ``pd.DataFrame``
+    (FRED path with global sum + per-country columns).
     """
     daily_idx = pd.date_range(start=start_date, end=end_date, freq="D")
     daily = monthly.reindex(daily_idx, method="ffill")
-    daily.name = "M2_global_usd"
-    return daily.to_frame().reset_index().rename(columns={"index": "Date"})
+    if isinstance(daily, pd.Series):
+        daily.name = "M2_global_usd"
+        return daily.to_frame().reset_index().rename(columns={"index": "Date"})
+    else:
+        return daily.reset_index().rename(columns={"index": "Date"})
 
 
 # ── Growth features ────────────────────────────────────────────────────────────
