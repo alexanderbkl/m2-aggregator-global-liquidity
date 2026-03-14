@@ -258,3 +258,30 @@ The combined BTC + M2 date range is too short (< 200 rows). Ensure your FRED ser
 
 **SHAP plot is missing**  
 Install the optional `shap` package: `pip install shap`. The pipeline continues without it if it is not installed.
+
+**Pipeline appears stuck at `Training SDAE on cpu ...`**  
+Increase SDAE diagnostics in `config.py` to observe progress:
+
+```python
+"sdae_log_every_epochs": 1,
+"sdae_log_every_batches": 1,   # very verbose; set to 0 to disable batch logs
+"sdae_torch_num_threads": 2,   # optional: reduce CPU thread contention on macOS
+```
+
+If needed, reduce runtime while debugging:
+
+```python
+"sdae_epochs": 10,
+"sdae_hidden_dims": [128, 64, 32],
+```
+
+**`OSError: ... Library not loaded: @rpath/libomp.dylib` when importing LightGBM (macOS)**  
+Install OpenMP runtime and reinstall LightGBM in your venv:
+
+```bash
+brew install libomp
+source .venv/bin/activate
+pip install --force-reinstall lightgbm
+```
+
+If Homebrew is installed in a custom location, ensure `libomp.dylib` is discoverable via your dynamic loader paths.

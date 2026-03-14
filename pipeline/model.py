@@ -18,12 +18,23 @@ Training/prediction workflow
 from __future__ import annotations
 
 import logging
+import sys
 from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-import lightgbm as lgb
+try:
+    import lightgbm as lgb
+except OSError as exc:
+    # LightGBM wheels on macOS require the OpenMP runtime from Homebrew.
+    if sys.platform == "darwin" and "libomp" in str(exc):
+        raise RuntimeError(
+            "LightGBM failed to load because libomp.dylib is missing. "
+            "Install it with 'brew install libomp', then reinstall LightGBM "
+            "inside the active virtualenv (pip install --force-reinstall lightgbm)."
+        ) from exc
+    raise
 
 from pipeline.sdae import SDAE, encode_features, train_sdae
 

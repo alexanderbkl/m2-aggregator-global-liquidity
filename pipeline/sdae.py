@@ -18,6 +18,7 @@ used to produce the latent representation that feeds into LightGBM.
 from __future__ import annotations
 
 import logging
+import time
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -103,11 +104,20 @@ def train_sdae(
     weight_decay: float = config.get("sdae_weight_decay", 1e-5)
     epochs: int = config.get("sdae_epochs", 50)
     batch_size: int = config.get("sdae_batch_size", 256)
+    patience: int = config.get("sdae_patience", 10)
+    log_every_epochs: int = max(1, int(config.get("sdae_log_every_epochs", 1)))
+    log_every_batches: int = int(config.get("sdae_log_every_batches", 0))
+    torch_num_threads = config.get("sdae_torch_num_threads")
+
+    if torch_num_threads is not None:
+        torch.set_num_threads(int(torch_num_threads))
 
     input_dim = X_train.shape[1]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info("Training SDAE on %s (input_dim=%d, latent_dim=%d)",
-                device, input_dim, hidden_dims[-1])
+    logger.info(
+        "Training SDAE on %s (input_dim=%d, latent_dim=%d, epochs=%d, batch_size=%d, torch_threads=%d)",
+        device, input_dim, hidden_dims[-1], epochs, batch_size, torch.get_num_threads(),
+    )
 
     X_train_t = torch.tensor(X_train, dtype=torch.float32, device=device)
     X_val_t = torch.tensor(X_val, dtype=torch.float32, device=device)
@@ -125,13 +135,18 @@ def train_sdae(
 
     best_val_loss = float("inf")
     best_state: Optional[dict] = None
-    patience = 10
     no_improve = 0
+    total_start = time.perf_counter()
+    n_batches = len(train_loader)
+    logger.info("SDAE dataloader ready: train_rows=%d, val_rows=%d, batches/epoch=%d",
+                len(X_train), len(X_val), n_batches)
 
     for epoch in range(1, epochs + 1):
+        epoch_start = time.perf_counter()
         model.train()
         train_loss = 0.0
-        for (batch,) in train_loader:
+        logger.info("SDAE epoch %3d/%d started", epoch, epochs)
+        for batch_idx, (batch,) in enumerate(train_loader, start=1):
             noisy = batch + noise_factor * torch.randn_like(batch)
             recon = model(noisy)
             loss = criterion(recon, batch)
@@ -139,6 +154,12 @@ def train_sdae(
             loss.backward()
             optimiser.step()
             train_loss += loss.item() * len(batch)
+
+            if log_every_batches > 0 and (batch_idx % log_every_batches == 0 or batch_idx == n_batches):
+                logger.info(
+                    "SDAE epoch %3d/%d batch %d/%d running_loss=%.6f",
+                    epoch, epochs, batch_idx, n_batches, train_loss / (batch_idx * batch_size),
+                )
         train_loss /= len(X_train)
 
         model.eval()
@@ -150,13 +171,17 @@ def train_sdae(
             best_val_loss = val_loss
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
             no_improve = 0
+            improved = True
         else:
             no_improve += 1
+            improved = False
 
-        if epoch % 10 == 0 or epoch == 1:
+        epoch_secs = time.perf_counter() - epoch_start
+        should_log_epoch = (epoch == 1) or (epoch % log_every_epochs == 0) or improved or (no_improve >= patience)
+        if should_log_epoch:
             logger.info(
-                "SDAE epoch %3d/%d  train_loss=%.6f  val_loss=%.6f",
-                epoch, epochs, train_loss, val_loss,
+                "SDAE epoch %3d/%d complete  train_loss=%.6f  val_loss=%.6f  best_val=%.6f  no_improve=%d/%d  elapsed=%.2fs",
+                epoch, epochs, train_loss, val_loss, best_val_loss, no_improve, patience, epoch_secs,
             )
 
         if no_improve >= patience:
@@ -168,6 +193,7 @@ def train_sdae(
         model.load_state_dict(best_state)
 
     model.eval()
+    logger.info("SDAE training finished in %.2fs", time.perf_counter() - total_start)
     return model
 
 

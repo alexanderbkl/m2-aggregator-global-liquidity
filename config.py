@@ -10,7 +10,7 @@ import os
 CONFIG: dict = {
     # ── BTC data ──────────────────────────────────────────────────────────────
     "btc_ticker": "BTC-USD",          # yfinance ticker
-    "btc_start_date": "2015-01-01",   # earliest date to fetch BTC OHLCV
+    "btc_start_date": "2014-01-01",   # earliest date to fetch BTC OHLCV
     "btc_target_horizon": 7,          # predict price direction N days ahead
 
     # ── Global M2 feature flag ─────────────────────────────────────────────
@@ -27,7 +27,8 @@ CONFIG: dict = {
 
     # FRED API key – read from environment variable FRED_API_KEY by default.
     # You may hard-code it here, but using an env var is recommended.
-    "fred_api_key": os.environ.get("FRED_API_KEY", ""),
+    # "fred_api_key": os.environ.get("FRED_API_KEY", ""),
+    "fred_api_key": "aaf3121388bab2aba7ad45a91c0790a4",
 
     # Country basket for M2 aggregation (FRED path).
     # Keys must match entries in M2_FRED_SERIES inside m2_liquidity.py.
@@ -57,6 +58,10 @@ CONFIG: dict = {
     "sdae_weight_decay": 1e-5,
     "sdae_epochs": 50,
     "sdae_batch_size": 256,
+    "sdae_patience": 10,
+    "sdae_log_every_epochs": 1,
+    "sdae_log_every_batches": 1,   # set >0 for very verbose batch-level progress logs
+    "sdae_torch_num_threads": 2,  # e.g. 1-4 can help on some macOS CPU/OpenMP setups
 
     # ── LightGBM ──────────────────────────────────────────────────────────
     "lgbm_params": {
