@@ -13,6 +13,11 @@ Training/prediction workflow
    so LightGBM sees both the compressed BTC latent vector AND the raw
    macro features (optional – controlled by config['use_m2_exog']).
 5. Train LightGBM with early stopping.
+
+Ensemble support
+────────────────
+train_ensemble() trains multiple SDAE+LightGBM pipelines on bootstrap
+samples and averages their predictions via predict_ensemble().
 """
 
 from __future__ import annotations
@@ -22,7 +27,6 @@ import sys
 from typing import Any, List, Tuple
 
 import numpy as np
-import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from pipeline.sdae import SDAE, encode_features, train_sdae
@@ -49,15 +53,22 @@ def _import_lightgbm() -> Any:
 # ── Train ──────────────────────────────────────────────────────────────────────
 
 def train_model(
-    X_train: pd.DataFrame,
-    y_train: pd.Series,
-    X_val: pd.DataFrame,
-    y_val: pd.Series,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_val: np.ndarray,
+    y_val: np.ndarray,
     feature_cols: List[str],
     config: dict,
 ) -> Tuple[SDAE, StandardScaler, Any, List[str]]:
     """
     Full training pipeline: scale → SDAE → LightGBM.
+
+    Parameters
+    ----------
+    X_train, y_train : np.ndarray
+    X_val, y_val     : np.ndarray
+    feature_cols     : list of str
+    config           : dict
 
     Returns
     -------
@@ -73,8 +84,8 @@ def train_model(
 
     # 1. Scale all features
     scaler = StandardScaler()
-    X_train_sc = scaler.fit_transform(X_train[feature_cols].values)
-    X_val_sc = scaler.transform(X_val[feature_cols].values)
+    X_train_sc = scaler.fit_transform(X_train)
+    X_val_sc = scaler.transform(X_val)
 
     # 2. Train SDAE
     sdae_model = train_sdae(X_train_sc, X_val_sc, config)
@@ -103,8 +114,8 @@ def train_model(
     lgbm_model = lgb.LGBMClassifier(**lgbm_params)
     lgbm_model.fit(
         Z_train,
-        y_train.values,
-        eval_set=[(Z_val, y_val.values)],
+        y_train,
+        eval_set=[(Z_val, y_val)],
         callbacks=[
             lgb.early_stopping(early_stop, verbose=False),
             lgb.log_evaluation(period=50),
@@ -119,10 +130,70 @@ def train_model(
     return sdae_model, scaler, lgbm_model, lgbm_features
 
 
+# ── Ensemble ──────────────────────────────────────────────────────────────────
+
+def train_ensemble(
+    bootstrap_samples: List[Tuple[np.ndarray, np.ndarray]],
+    X_val: np.ndarray,
+    y_val: np.ndarray,
+    feature_cols: List[str],
+    config: dict,
+) -> List[Tuple[SDAE, StandardScaler, Any, List[str]]]:
+    """
+    Train an ensemble of SDAE+LightGBM models on bootstrap samples.
+
+    Parameters
+    ----------
+    bootstrap_samples : list of (X_boot, y_boot) tuples
+    X_val, y_val      : validation arrays
+    feature_cols      : feature column names
+    config            : pipeline config
+
+    Returns
+    -------
+    list of (sdae_model, scaler, lgbm_model, lgbm_features) tuples
+    """
+    models = []
+    for i, (X_boot, y_boot) in enumerate(bootstrap_samples):
+        logger.info("Training ensemble member %d/%d (n_samples=%d)",
+                    i + 1, len(bootstrap_samples), len(X_boot))
+        result = train_model(X_boot, y_boot, X_val, y_val, feature_cols, config)
+        models.append(result)
+    logger.info("Ensemble training complete: %d models", len(models))
+    return models
+
+
+def predict_ensemble(
+    X: np.ndarray,
+    feature_cols: List[str],
+    models: List[Tuple[SDAE, StandardScaler, Any, List[str]]],
+    config: dict,
+) -> np.ndarray:
+    """
+    Average predictions from an ensemble of models.
+
+    Parameters
+    ----------
+    X             : np.ndarray feature matrix
+    feature_cols  : feature column names
+    models        : list of (sdae_model, scaler, lgbm_model, lgbm_features)
+    config        : pipeline config
+
+    Returns
+    -------
+    np.ndarray of shape (N,) – averaged p_up
+    """
+    all_preds = []
+    for sdae_model, scaler, lgbm_model, lgbm_features in models:
+        p_up = predict(X, feature_cols, sdae_model, scaler, lgbm_model, config)
+        all_preds.append(p_up)
+    return np.mean(all_preds, axis=0)
+
+
 # ── Predict ────────────────────────────────────────────────────────────────────
 
 def predict(
-    X: pd.DataFrame,
+    X: np.ndarray,
     feature_cols: List[str],
     sdae_model: SDAE,
     scaler: StandardScaler,
@@ -142,7 +213,7 @@ def predict(
         c for c in feature_cols if c.startswith("M2_") or c.startswith("m2_")
     ] if use_m2 else []
 
-    X_sc = scaler.transform(X[feature_cols].values)
+    X_sc = scaler.transform(X)
     Z = encode_features(sdae_model, X_sc)
 
     if m2_cols:

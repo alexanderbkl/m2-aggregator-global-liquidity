@@ -6,10 +6,9 @@ Metrics computation and plotting for the BTC + Global M2 pipeline.
 Charts produced
 ───────────────
 1. Confusion matrix
-2. Equity curve (long when p_up > 0.5, else flat)
-3. Feature importance bar chart (LightGBM, highlighting M2 features)
-4. SHAP beeswarm (top 20 features)
-5. Regime accuracy (DA per liquidity-growth bucket)  ← M2-specific
+2. Feature importance bar chart (LightGBM, highlighting M2 features)
+3. SHAP beeswarm (top 20 features)
+4. Regime accuracy (DA per liquidity-growth bucket)  ← M2-specific
 """
 
 from __future__ import annotations
@@ -62,10 +61,18 @@ def compute_metrics(y_true: np.ndarray, p_up: np.ndarray) -> dict:
     dict with keys: accuracy, f1, auc, directional_accuracy
     """
     y_pred = (p_up >= 0.5).astype(int)
+
+    # AUC can fail if only one class is present in a fold
+    try:
+        auc = roc_auc_score(y_true, p_up)
+    except ValueError:
+        auc = 0.5
+        logger.warning("AUC undefined (single class in y_true), defaulting to 0.5.")
+
     metrics = {
         "accuracy": accuracy_score(y_true, y_pred),
         "f1": f1_score(y_true, y_pred, zero_division=0),
-        "auc": roc_auc_score(y_true, p_up),
+        "auc": auc,
     }
     logger.info(
         "Metrics  acc=%.4f  f1=%.4f  AUC=%.4f",
@@ -113,32 +120,7 @@ def plot_confusion_matrix(
     _save(fig, filename, config)
 
 
-# ── 2. Equity curve ────────────────────────────────────────────────────────────
-
-def plot_equity_curve(
-    y_true: np.ndarray,
-    p_up: np.ndarray,
-    config: dict,
-    filename: str = "equity_curve.png",
-) -> None:
-    if not _HAS_MPL:
-        return
-    signal = (p_up >= 0.5).astype(float)
-    # Daily PnL = signal × (2*y_true - 1)  (+1 correct, -1 incorrect)
-    pnl = signal * (2 * y_true.astype(float) - 1)
-    equity = np.cumsum(pnl)
-
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(equity, label="Strategy equity")
-    ax.axhline(0, color="grey", linestyle="--", linewidth=0.8)
-    ax.set_xlabel("Test sample index")
-    ax.set_ylabel("Cumulative PnL (unit bets)")
-    ax.set_title("Strategy Equity Curve")
-    ax.legend()
-    _save(fig, filename, config)
-
-
-# ── 3. Feature importance ──────────────────────────────────────────────────────
+# ── 2. Feature importance ──────────────────────────────────────────────────────
 
 def plot_feature_importance(
     lgbm_model,
@@ -183,7 +165,7 @@ def plot_feature_importance(
     _save(fig2, "m2_feature_importance.png", config)
 
 
-# ── 4. SHAP beeswarm ──────────────────────────────────────────────────────────
+# ── 3. SHAP beeswarm ──────────────────────────────────────────────────────────
 
 def plot_shap_beeswarm(
     lgbm_model,
@@ -213,7 +195,7 @@ def plot_shap_beeswarm(
         logger.warning("SHAP plot failed: %s", exc)
 
 
-# ── 5. Regime accuracy ─────────────────────────────────────────────────────────
+# ── 4. Regime accuracy ─────────────────────────────────────────────────────────
 
 def plot_regime_accuracy(
     df_test: pd.DataFrame,

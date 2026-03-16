@@ -17,77 +17,83 @@ CONFIG: dict = {
     "use_m2_exog": False,              # set False to disable M2 features (ablation)
 
     # ── M2 data source ────────────────────────────────────────────────────
-    # "bis_fred"  → build series from FRED API (+ optional BIS supplement)
-    # "csv"       → load from a pre-computed CSV at m2_csv_path
     "m2_source": "bis_fred",
-
-    # Path to pre-computed CSV (used when m2_source == "csv").
-    # Expected columns: Date (YYYY-MM-DD), M2_global_usd
     "m2_csv_path": os.path.join("data", "global_m2.csv"),
-
-    # FRED API key – read from environment variable FRED_API_KEY by default.
-    # You may hard-code it here, but using an env var is recommended.
-    # "fred_api_key": os.environ.get("FRED_API_KEY", ""),
     "fred_api_key": "aaf3121388bab2aba7ad45a91c0790a4",
-
-    # Country basket for M2 aggregation (FRED path).
-    # Keys must match entries in M2_FRED_SERIES inside m2_liquidity.py.
     "m2_countries": ["US", "EA", "CN", "JP", "GB"],
-
-    # Lag offsets (in calendar days) for the lagged M2 features
     "m2_lag_days": [1, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98],
-
-    # Growth windows (in days) computed on the daily M2 series
     "m2_growth_windows": [7, 14, 30, 60, 90, 180],
 
     # ── Feature engineering ────────────────────────────────────────────────
-    # Rolling windows (in days) for BTC technical features
     "btc_rolling_windows": [7, 14, 30, 60, 90],
 
-    # ── Train / validation / test split ────────────────────────────────────
-    # Fraction of the dataset used for training (chronological split)
-    "train_ratio": 0.70,
-    "val_ratio": 0.15,
-    # The remaining fraction goes to the test set
+    # ── Cross-asset features ──────────────────────────────────────────────
+    "fetch_cross_assets": True,
+    "cross_asset_tickers": {
+        "gold": "GC=F",
+        "dxy": "DX-Y.NYB",
+        "sp500": "^GSPC",
+        "nasdaq": "^IXIC",
+    },
+
+    # ── Feature selection ─────────────────────────────────────────────────
+    "feature_selection_k": 40,
+
+    # ── Walk-Forward CV ───────────────────────────────────────────────────
+    "wf_min_train_days": 1095,        # 3 years minimum training
+    "wf_test_days": 182,              # 6 months test window
+    "wf_step_days": 182,              # step forward by test_window
+    "wf_purge_days": 7,               # = horizon_days
+    "wf_embargo_days": 7,
+
+    # ── Moving Block Bootstrap ────────────────────────────────────────────
+    "mbb_block_size": 60,             # 2 months of daily data
+    "mbb_n_bootstraps": 5,            # number of bootstrap samples per fold
 
     # ── SDAE (Stacked Denoising Autoencoder) ──────────────────────────────
-    "sdae_hidden_dims": [512, 256, 128],  # encoder hidden layer sizes; doubled from [256,128,64] to match the richer feature set (BTC indicators + per-country M2)
-    "sdae_noise_factor": 0.1,             # Gaussian noise σ added during training
+    # hidden_dims now computed dynamically from input_dim
+    "sdae_noise_factor": 0.1,
     "sdae_dropout": 0.2,
     "sdae_learning_rate": 1e-3,
     "sdae_weight_decay": 1e-5,
-    "sdae_epochs": 100,
+    "sdae_epochs": 50,
     "sdae_batch_size": 256,
     "sdae_patience": 15,
     "sdae_log_every_epochs": 10,
-    "sdae_log_every_batches": 0,   # set >0 for very verbose batch-level progress logs
-    "sdae_torch_num_threads": 2,  # e.g. 1-4 can help on some macOS CPU/OpenMP setups
+    "sdae_log_every_batches": 0,
+    "sdae_torch_num_threads": 2,
 
-    # ── LightGBM ──────────────────────────────────────────────────────────
+    # ── LightGBM (conservative for noisy financial data) ──────────────────
     "lgbm_params": {
         "objective": "binary",
         "metric": "binary_logloss",
-        "n_estimators": 1000,
-        "learning_rate": 0.02,
-        "max_depth": 7,
-        "num_leaves": 63,
-        "min_child_samples": 30,
-        "subsample": 0.7,
+        "n_estimators": 300,
+        "learning_rate": 0.03,
+        "max_depth": 4,
+        "num_leaves": 15,
+        "min_child_samples": 50,
+        "subsample": 0.6,
         "subsample_freq": 1,
-        "colsample_bytree": 0.7,
-        "reg_alpha": 0.2,
-        "reg_lambda": 2.0,
+        "colsample_bytree": 0.6,
+        "reg_alpha": 3.0,
+        "reg_lambda": 10.0,
         "random_state": 42,
         "n_jobs": -1,
         "verbose": -1,
     },
-    "lgbm_early_stopping_rounds": 100,
+    "lgbm_early_stopping_rounds": 40,
+
+    # ── Backtester ────────────────────────────────────────────────────────
+    "bt_initial_capital": 10000,
+    "bt_maker_fee": 0.001,            # 0.1%
+    "bt_taker_fee": 0.001,            # 0.1%
+    "bt_slippage_pct": 0.0005,        # 0.05%
+    "bt_position_size_pct": 0.95,
+    "bt_confidence_threshold": 0.50,
 
     # ── Evaluation & output ────────────────────────────────────────────────
     "output_dir": "outputs",
     "save_plots": True,
-
-    # Regime analysis: column used to bucket test samples
-    "regime_column": "m2_90d_chg",   # must exist in features when use_m2_exog=True
-    "regime_n_bins": 3,               # e.g. low / medium / high liquidity growth
+    "regime_column": "m2_90d_chg",
+    "regime_n_bins": 3,
 }

@@ -8,6 +8,10 @@ Architecture
 Encoder: input_dim → hidden[0] → hidden[1] → ... → latent_dim
 Decoder: latent_dim → ... → hidden[0] → input_dim  (symmetric)
 
+Hidden dims are computed dynamically from input_dim:
+  latent_dim = min(input_dim // 2, 64), minimum 8
+  Two hidden layers interpolate between input_dim and latent_dim.
+
 Training
 ────────
 Gaussian noise (σ = noise_factor) is added to inputs; the loss is the MSE
@@ -27,6 +31,37 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 logger = logging.getLogger(__name__)
+
+
+def _compute_hidden_dims(input_dim: int) -> List[int]:
+    """
+    Dynamically compute SDAE hidden dimensions from input_dim.
+
+    The latent dim is input_dim // 2, capped at 64 and floored at 8.
+    Two intermediate hidden layers interpolate between input_dim and latent_dim.
+
+    Returns
+    -------
+    list of int
+        Hidden dimensions for the encoder (e.g. [128, 64, 32] for input_dim=256).
+    """
+    latent_dim = max(8, min(input_dim // 2, 64))
+
+    if input_dim <= latent_dim:
+        return [latent_dim]
+
+    # Two intermediate layers
+    h1 = max(latent_dim, (input_dim + latent_dim) * 2 // 3)
+    h2 = max(latent_dim, (input_dim + latent_dim) // 3)
+
+    dims = []
+    if h1 > latent_dim and h1 < input_dim:
+        dims.append(h1)
+    if h2 > latent_dim and h2 != h1:
+        dims.append(h2)
+    dims.append(latent_dim)
+
+    return dims
 
 
 class _Encoder(nn.Module):
@@ -97,7 +132,11 @@ def train_sdae(
     -------
     Trained SDAE model (eval mode).
     """
-    hidden_dims: List[int] = config.get("sdae_hidden_dims", [256, 128, 64])
+    input_dim = X_train.shape[1]
+
+    # Compute hidden dims dynamically (ignore any static config)
+    hidden_dims = _compute_hidden_dims(input_dim)
+
     noise_factor: float = config.get("sdae_noise_factor", 0.1)
     dropout: float = config.get("sdae_dropout", 0.2)
     lr: float = config.get("sdae_learning_rate", 1e-3)
@@ -112,11 +151,10 @@ def train_sdae(
     if torch_num_threads is not None:
         torch.set_num_threads(int(torch_num_threads))
 
-    input_dim = X_train.shape[1]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(
-        "Training SDAE on %s (input_dim=%d, latent_dim=%d, epochs=%d, batch_size=%d, torch_threads=%d)",
-        device, input_dim, hidden_dims[-1], epochs, batch_size, torch.get_num_threads(),
+        "Training SDAE on %s (input_dim=%d, hidden_dims=%s, latent_dim=%d, epochs=%d, batch_size=%d, torch_threads=%d)",
+        device, input_dim, hidden_dims, hidden_dims[-1], epochs, batch_size, torch.get_num_threads(),
     )
 
     X_train_t = torch.tensor(X_train, dtype=torch.float32, device=device)
@@ -145,7 +183,6 @@ def train_sdae(
         epoch_start = time.perf_counter()
         model.train()
         train_loss = 0.0
-        logger.info("SDAE epoch %3d/%d started", epoch, epochs)
         for batch_idx, (batch,) in enumerate(train_loader, start=1):
             noisy = batch + noise_factor * torch.randn_like(batch)
             recon = model(noisy)
