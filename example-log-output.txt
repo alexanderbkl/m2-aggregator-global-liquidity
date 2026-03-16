@@ -1,0 +1,167 @@
+LOADED: /Users/user/.zshenv
+LOADED: /Users/user/.zprofile
+LOADED: /Users/user/.zshrc
+user@MB-alexanderbkl m2-aggregator-global-liquidity % source .venv/bin/activate
+(.venv) user@MB-alexanderbkl m2-aggregator-global-liquidity % python main.py 
+20:21:31 INFO     __main__ – === Step 1: Load data ===
+20:21:31 INFO     pipeline.data_loader – Downloading BTC data: ticker=BTC-USD start=2014-01-01
+20:21:32 INFO     pipeline.data_loader – BTC data loaded: 4199 rows (Date: 2014-09-17 → 2026-03-16)
+20:21:32 INFO     pipeline.data_loader – use_m2_exog=False – skipping Global M2 features.
+20:21:32 INFO     __main__ – === Step 2: Build features ===
+20:21:32 INFO     pipeline.features – Feature matrix: 4110 rows × 33 features (0 M2 columns)
+20:21:32 INFO     __main__ – === Step 3: Split ===
+20:21:32 INFO     __main__ – Split  train=2877  val=616  test=617
+20:21:32 INFO     __main__ – === Step 4: Train SDAE + LightGBM ===
+20:21:32 INFO     pipeline.sdae – Training SDAE on cpu (input_dim=33, latent_dim=128, epochs=100, batch_size=256, torch_threads=2)
+20:21:32 INFO     pipeline.sdae – SDAE dataloader ready: train_rows=2877, val_rows=616, batches/epoch=12
+20:21:32 INFO     pipeline.sdae – SDAE epoch   1/100 started
+20:21:32 INFO     pipeline.sdae – SDAE epoch   1/100 complete  train_loss=0.608254  val_loss=0.712042  best_val=0.712042  no_improve=0/15  elapsed=0.09s
+20:21:32 INFO     pipeline.sdae – SDAE epoch   2/100 started
+20:21:32 INFO     pipeline.sdae – SDAE epoch   2/100 complete  train_loss=0.288495  val_loss=0.293455  best_val=0.293455  no_improve=0/15  elapsed=0.04s
+20:21:32 INFO     pipeline.sdae – SDAE epoch   3/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch   3/100 complete  train_loss=0.228118  val_loss=0.163288  best_val=0.163288  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch   4/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch   4/100 complete  train_loss=0.196987  val_loss=0.145894  best_val=0.145894  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch   5/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch   5/100 complete  train_loss=0.179491  val_loss=0.132267  best_val=0.132267  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch   6/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch   6/100 complete  train_loss=0.167931  val_loss=0.118306  best_val=0.118306  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch   7/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch   7/100 complete  train_loss=0.165079  val_loss=0.113730  best_val=0.113730  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch   8/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch   9/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch   9/100 complete  train_loss=0.153286  val_loss=0.101841  best_val=0.101841  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch  10/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  10/100 complete  train_loss=0.142819  val_loss=0.102851  best_val=0.101841  no_improve=1/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch  11/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  11/100 complete  train_loss=0.140443  val_loss=0.101613  best_val=0.101613  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch  12/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  12/100 complete  train_loss=0.140443  val_loss=0.100229  best_val=0.100229  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch  13/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  13/100 complete  train_loss=0.134101  val_loss=0.099605  best_val=0.099605  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch  14/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  15/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  15/100 complete  train_loss=0.127979  val_loss=0.089776  best_val=0.089776  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch  16/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  17/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  18/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  19/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  19/100 complete  train_loss=0.122468  val_loss=0.079160  best_val=0.079160  no_improve=0/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch  20/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  20/100 complete  train_loss=0.116507  val_loss=0.088791  best_val=0.079160  no_improve=1/15  elapsed=0.04s
+20:21:33 INFO     pipeline.sdae – SDAE epoch  21/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  22/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  23/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  24/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  25/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  26/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  27/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  28/100 started
+20:21:33 INFO     pipeline.sdae – SDAE epoch  29/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  29/100 complete  train_loss=0.109987  val_loss=0.074979  best_val=0.074979  no_improve=0/15  elapsed=0.04s
+20:21:34 INFO     pipeline.sdae – SDAE epoch  30/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  30/100 complete  train_loss=0.108357  val_loss=0.084654  best_val=0.074979  no_improve=1/15  elapsed=0.04s
+20:21:34 INFO     pipeline.sdae – SDAE epoch  31/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  32/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  33/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  34/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  35/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  36/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  37/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  37/100 complete  train_loss=0.100012  val_loss=0.069268  best_val=0.069268  no_improve=0/15  elapsed=0.04s
+20:21:34 INFO     pipeline.sdae – SDAE epoch  38/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  39/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  40/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  40/100 complete  train_loss=0.095537  val_loss=0.075860  best_val=0.069268  no_improve=3/15  elapsed=0.04s
+20:21:34 INFO     pipeline.sdae – SDAE epoch  41/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  42/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  43/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  44/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  45/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  46/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  47/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  48/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  49/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  50/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  50/100 complete  train_loss=0.091721  val_loss=0.079894  best_val=0.069268  no_improve=13/15  elapsed=0.04s
+20:21:34 INFO     pipeline.sdae – SDAE epoch  51/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  52/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  52/100 complete  train_loss=0.091297  val_loss=0.067972  best_val=0.067972  no_improve=0/15  elapsed=0.04s
+20:21:34 INFO     pipeline.sdae – SDAE epoch  53/100 started
+20:21:34 INFO     pipeline.sdae – SDAE epoch  54/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  55/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  56/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  57/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  58/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  59/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  60/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  60/100 complete  train_loss=0.091005  val_loss=0.068060  best_val=0.067972  no_improve=8/15  elapsed=0.04s
+20:21:35 INFO     pipeline.sdae – SDAE epoch  61/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  62/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  63/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  64/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  64/100 complete  train_loss=0.091115  val_loss=0.067457  best_val=0.067457  no_improve=0/15  elapsed=0.04s
+20:21:35 INFO     pipeline.sdae – SDAE epoch  65/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  66/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  67/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  68/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  69/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  70/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  70/100 complete  train_loss=0.089934  val_loss=0.076949  best_val=0.067457  no_improve=6/15  elapsed=0.04s
+20:21:35 INFO     pipeline.sdae – SDAE epoch  71/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  72/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  72/100 complete  train_loss=0.087801  val_loss=0.066356  best_val=0.066356  no_improve=0/15  elapsed=0.04s
+20:21:35 INFO     pipeline.sdae – SDAE epoch  73/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  74/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  74/100 complete  train_loss=0.086234  val_loss=0.064181  best_val=0.064181  no_improve=0/15  elapsed=0.04s
+20:21:35 INFO     pipeline.sdae – SDAE epoch  75/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  76/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  76/100 complete  train_loss=0.088258  val_loss=0.063639  best_val=0.063639  no_improve=0/15  elapsed=0.04s
+20:21:35 INFO     pipeline.sdae – SDAE epoch  77/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  78/100 started
+20:21:35 INFO     pipeline.sdae – SDAE epoch  79/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  80/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  80/100 complete  train_loss=0.085269  val_loss=0.062323  best_val=0.062323  no_improve=0/15  elapsed=0.04s
+20:21:36 INFO     pipeline.sdae – SDAE epoch  81/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  82/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  83/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  83/100 complete  train_loss=0.086540  val_loss=0.061179  best_val=0.061179  no_improve=0/15  elapsed=0.04s
+20:21:36 INFO     pipeline.sdae – SDAE epoch  84/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  85/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  86/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  87/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  88/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  89/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  90/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  90/100 complete  train_loss=0.086688  val_loss=0.073824  best_val=0.061179  no_improve=7/15  elapsed=0.04s
+20:21:36 INFO     pipeline.sdae – SDAE epoch  91/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  92/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  93/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  94/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  95/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  96/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  97/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  98/100 started
+20:21:36 INFO     pipeline.sdae – SDAE epoch  98/100 complete  train_loss=0.078729  val_loss=0.065992  best_val=0.061179  no_improve=15/15  elapsed=0.04s
+20:21:36 INFO     pipeline.sdae – SDAE early stopping at epoch 98 (no improvement for 15 epochs)
+20:21:36 INFO     pipeline.sdae – SDAE training finished in 3.93s
+[50]    valid_0's binary_logloss: 0.685513
+[100]   valid_0's binary_logloss: 0.696944
+20:21:37 INFO     pipeline.model – LightGBM trained: best_iteration=12, n_features=128
+20:21:37 INFO     __main__ – === Step 5: Evaluate ===
+/Users/user/Desktop/tests/m2-aggregator-global-liquidity/.venv/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+20:21:37 INFO     pipeline.evaluation – Metrics  acc=0.5300  f1=0.6742  AUC=0.5568
+20:21:37 INFO     pipeline.evaluation – Saved plot: outputs/confusion_matrix.png
+20:21:37 INFO     pipeline.evaluation – Saved plot: outputs/equity_curve.png
+20:21:37 INFO     pipeline.evaluation – Saved plot: outputs/feature_importance.png
+/Users/user/Desktop/tests/m2-aggregator-global-liquidity/.venv/lib/python3.10/site-packages/shap/explainers/_tree.py:586: UserWarning: LightGBM binary classifier with TreeExplainer shap values output has changed to a list of ndarray
+  warnings.warn(
+20:21:37 INFO     pipeline.evaluation – Saved plot: outputs/shap_beeswarm.png
+20:21:37 INFO     pipeline.evaluation – Regime accuracy plot skipped (regime_col 'm2_90d_chg' not available).
+20:21:37 INFO     __main__ – === Step 6: Predict next period ===
+/Users/user/Desktop/tests/m2-aggregator-global-liquidity/.venv/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+20:21:37 INFO     __main__ – Next 7-day BTC forecast: p_up=0.5058  signal=UP ↑
+20:21:37 INFO     __main__ – === Pipeline complete ===  results={'metrics': {'accuracy': 0.5299837925445705, 'f1': 0.6741573033707865, 'auc': 0.5567716684952317}, 'next_period_p_up': 0.5057961984150239, 'next_period_signal': 'UP ↑', 'feature_count': 33, 'm2_feature_count': 0}
+(.venv) user@MB-alexanderbkl m2-aggregator-global-liquidity % 

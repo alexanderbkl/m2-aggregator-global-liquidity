@@ -14,7 +14,7 @@ CONFIG: dict = {
     "btc_target_horizon": 7,          # predict price direction N days ahead
 
     # ── Global M2 feature flag ─────────────────────────────────────────────
-    "use_m2_exog": True,              # set False to disable M2 features (ablation)
+    "use_m2_exog": False,              # set False to disable M2 features (ablation)
 
     # ── M2 data source ────────────────────────────────────────────────────
     # "bis_fred"  → build series from FRED API (+ optional BIS supplement)
